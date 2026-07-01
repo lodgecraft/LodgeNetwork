@@ -147,3 +147,15 @@ Planned infrastructure:
 - redis
 - website
 - discord-bot
+
+---
+
+## Pterodactyl Docker DNS
+
+Velocity currently connects to backend servers using Pterodactyl server UUIDs.
+
+Example:
+
+```toml
+lobby = "f6c3898e-5ad8-46c0-9492-75f9d26428da:25566"
+survival = "db5a93b3-2dfe-4a41-b9b1-a5856a6eaf86:25567"
