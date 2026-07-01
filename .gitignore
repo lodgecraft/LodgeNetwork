@@ -1,1 +1,32 @@
+# macOS
 .DS_Store
+
+# IntelliJ
+.idea/
+*.iml
+
+# VSCode
+.vscode/
+
+# Logs
+logs/
+*.log
+
+# Java
+*.class
+
+# Maven
+target/
+
+# Gradle
+build/
+
+# Temporary
+tmp/
+temp/
+
+# Minecraft
+cache/
+libraries/
+versions/
+
