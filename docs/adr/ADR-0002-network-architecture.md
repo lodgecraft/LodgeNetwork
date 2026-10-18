@@ -46,3 +46,8 @@ Le réseau est pensé pour évoluer vers plusieurs nœuds physiques.
 - Les serveurs internes communiquent uniquement via Velocity.
 - Les nouveaux serveurs pourront être ajoutés sans modifier l'architecture.
 - Une migration vers plusieurs VPS sera simple.
+
+
+## Actualisation du 18 octobre 2026
+
+Le diagramme ci-dessus est historique. La topologie effective est décrite dans [NETWORK.md](../architecture/NETWORK.md) : Velocity dessert directement Lobby, Survival et Build ; Event/Dev ne sont pas confirmés déployés.

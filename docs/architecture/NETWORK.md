@@ -1,161 +1,44 @@
-# LodgeCraft Network Architecture
+# Architecture réseau — 18 octobre 2026
 
-## Infrastructure
-
-```
-Internet
-        │
-        ▼
- play.lodgecraft.fr
-        │
-        ▼
-+--------------------+
-|    Velocity Proxy  |
-|      proxy-01      |
-|      Port 25565    |
-+--------------------+
-        │
-        ├───────────────┐
-        ▼               ▼
-+---------------+   +----------------+
-|   lobby-01    |   |  survival-01   |
-|   Port 25566  |   |   Port 25567   |
-+---------------+   +----------------+
+```mermaid
+flowchart TD
+    J["Joueurs · play.lodgecraft.fr"] --> V["Velocity · 25565"]
+    V --> L["Lobby · 25566"]
+    V --> S["Survival · 25567"]
+    V --> B["Build · 25569"]
+    W["Visiteurs web"] --> C["Cloudflare · site public"]
+    C --> N["Nginx · Azuriom"]
+    P["Panel Pterodactyl"] --> WG["Wings · Docker"]
+    WG --> MC["Instances Minecraft et bot Discord"]
 ```
 
----
+## Hôte et adressage interne
 
-## Current servers
+VPS OVH `vps-05a8e0df`, Ubuntu 24.04.5, noyau 6.8.0-147 selon le bilan du 18 octobre. Réseau Docker `pterodactyl_nw`, plage historique `172.18.0.0/16`. L'hôte MariaDB est accessible depuis les conteneurs autorisés via `172.18.0.1:3306`.
 
-| Name | Type | Port | Status |
-|------|------|------|--------|
-| proxy-01 | Velocity | 25565 | Production |
-| lobby-01 | Paper | 25566 | Production |
-| survival-01 | Paper | 25567 | Production |
+Velocity utilise le DNS des conteneurs Pterodactyl. Les UUID historiques connus sont : Lobby `f6c3898e-5ad8-46c0-9492-75f9d26428da`, Survival `db5a93b3-2dfe-4a41-b9b1-a5856a6eaf86`. UUID Build non documenté ; ne pas l'inventer ni utiliser localhost dans le conteneur proxy pour joindre un autre conteneur.
 
----
+## Authentification Minecraft
 
-## Network
+Velocity : authentification premium et forwarding `modern`. Les trois Paper : Velocity `enabled=true`, `online-mode=true` dans la section de forwarding Paper, mais `online-mode=false` dans `server.properties`. Le secret est identique et a été vérifié par empreintes sans être affiché. Ces deux réglages online-mode concernent des niveaux différents et ne se contredisent pas.
 
-External players connect only to:
+Les backends ne doivent pas accepter les connexions Internet directes. Voir [pare-feu](../security/FIREWALL.md).
 
-```
-25565
-```
+## Web et Cloudflare
 
-Backend servers are **never** accessed directly from the Internet.
+`lodgecraft.fr` et `www.lodgecraft.fr` ont été passés en proxy Cloudflare. Une règle Managed Challenge a été testée sur l'accueil :
 
-Traffic flow:
-
-```
-Player
-    │
-    ▼
-Velocity
-    │
-    ▼
-Paper Servers
+```text
+(http.host in {"lodgecraft.fr" "www.lodgecraft.fr"}
+ and http.request.uri.path eq "/"
+ and http.request.method eq "GET"
+ and not cf.client.bot)
 ```
 
----
+Elle ne concerne pas `/packs/`, les API, les autres pages, les POST ni `play`, `panel`, `node`, `discord`. Elle ne protège donc pas tous les accès web. Les autres entrées restent DNS uniquement selon la configuration demandée. Le trafic Minecraft ne doit pas être passé au proxy HTTP Cloudflare standard.
 
-## Docker networking
+Les resourcepacks sont servis via `/packs/`. L'IP d'origine reste identifiable via les autres services : ne pas promettre qu'elle est cachée ou que l'accès web direct est bloqué sans vérification spécifique.
 
-Velocity communicates with backend servers using Docker DNS.
+## Évolutions
 
-Current hostnames:
-
-| Server | Docker hostname |
-|---------|-----------------|
-| lobby-01 | f6c3898e-5ad8-46c0-9492-75f9d26428da |
-| survival-01 | db5a93b3-2dfe-4a41-b9b1-a5856a6eaf86 |
-
-> Temporary solution.
->
-> Future objective:
->
-> Replace Docker UUIDs with stable container names or a dedicated Docker network.
-
----
-
-## Security
-
-### Public ports
-
-- 22 → SSH
-- 80 → HTTP
-- 443 → HTTPS
-- 25565 → Minecraft Proxy
-- 2022 → Wings SFTP
-- 8080 → Wings API
-
-### Internal Minecraft ports
-
-- 25566 → Lobby
-- 25567 → Survival
-
-Blocked from the Internet using the DOCKER-USER chain.
-
----
-
-## Velocity
-
-Forwarding mode:
-
-```
-modern
-```
-
-Secret:
-
-```
-Stored in forwarding.secret
-```
-
-Player IP logging:
-
-```
-Disabled
-```
-
-Query protocol:
-
-```
-Disabled
-```
-
-Player sample:
-
-```
-Disabled
-```
-
----
-
-## Future servers
-
-Planned infrastructure:
-
-- proxy-01
-- lobby-01
-- survival-01
-- build-01
-- minage-01
-- events-01
-- dev-01
-- database
-- redis
-- website
-- discord-bot
-
----
-
-## Pterodactyl Docker DNS
-
-Velocity currently connects to backend servers using Pterodactyl server UUIDs.
-
-Example:
-
-```toml
-lobby = "f6c3898e-5ad8-46c0-9492-75f9d26428da:25566"
-survival = "db5a93b3-2dfe-4a41-b9b1-a5856a6eaf86:25567"
+Build à la demande : demandé, non implémenté. Minage/Event/Dev : projets, pas des serveurs actuellement confirmés. Voir [spécification Build](BUILD_ON_DEMAND.md).
